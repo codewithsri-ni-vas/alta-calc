@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ALTA Auto Insurance Estimator (Step-by-Step)</title>
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#ffffff;
+      --accent:#6366f1; --danger:#ef4444; --ring:#c7d2fe;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;
+      background:linear-gradient(160deg,#0b1229,#0f172a 40%,#0b1229);
+      color:var(--text); min-height:100svh; display:grid; place-items:center; padding:24px;
+    }
+    .card{
+      width:100%; max-width:720px; background:rgba(17,24,39,.85);
+      backdrop-filter: blur(6px); border:1px solid rgba(255,255,255,.06);
+      border-radius:18px; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    h1{font-size:1.6rem; margin:.25rem 0 .75rem}
+    p.lead{color:var(--muted); margin-top:0}
+    .progress{
+      width:100%; height:8px; background:#0b1222; border-radius:999px;
+      overflow:hidden; margin:16px 0 24px; border:1px solid rgba(255,255,255,.06);
+    }
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#8b5cf6); transition:width .35s ease}
+    .step{display:none; animation:slide .28s ease;}
+    .step.active{display:block}
+    @keyframes slide{ from{transform:translateY(6px); opacity:.0} to{transform:translateY(0); opacity:1} }
+    label{display:block; margin:.25rem 0 .35rem; color:#cbd5e1}
+    input, select{
+      width:100%; padding:14px 14px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.08); background:#0b1222; color:var(--text);
+      outline:none; font-size:1rem; -webkit-appearance: none; appearance: none;
+    }
+    input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 4px rgba(99,102,241,.15)}
+    .controls{display:flex; gap:12px; margin-top:16px; flex-wrap:wrap}
+    button{
+      appearance:none; border:0; padding:12px 16px; border-radius:12px; cursor:pointer;
+      background:var(--accent); color:white; font-weight:600;
+      box-shadow:0 6px 20px rgba(99,102,241,.35); transition:transform .05s ease, filter .2s ease;
+    }
+    button.secondary{background:#1f2937; color:#e5e7eb; box-shadow:none; border:1px solid rgba(255,255,255,.06)}
+    button.ghost{background:transparent; border:1px dashed rgba(255,255,255,.25); color:#cbd5e1}
+    button:active{transform:translateY(1px)}
+    .hint{font-size:.9rem; color:var(--muted); margin-top:6px}
+    .error{color:var(--danger); margin-top:10px; min-height:1.1rem}
+    .results{
+      border:1px solid rgba(255,255,255,.08); background:#0a0f20; padding:18px; border-radius:14px; margin-top:18px
+    }
+    .pill{
+      display:inline-block; padding:6px 10px; border-radius:999px; background:#0b1229; border:1px solid rgba(255,255,255,.08); color:#cbd5e1; font-size:.85rem; margin:4px 6px 0 0
+    }
+    .price{
+      font-size:2rem; font-weight:800; line-height:1.1; margin:8px 0;
+      background:linear-gradient(90deg,#fff,#c7d2fe); -webkit-background-clip:text; color:transparent;
+    }
+    .muted{color:var(--muted)}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+    @media (max-width:600px){ .grid{grid-template-columns:1fr} }
+    .footer-note{font-size:.85rem; color:#94a3b8; margin-top:10px}
+  </style>
+</head>
+<body>
+  <main class="card" role="form" aria-labelledby="title">
+    <h1 id="title">ALTA Auto Insurance Calculator</h1>
+    <p class="lead">Answer a few quick questions. We’ll estimate your annual & monthly premium.</p>
+
+    <div class="progress" aria-hidden="true"><div id="progressBar" class="bar"></div></div>
+    <div id="stepCounter" class="muted" style="margin-bottom:10px;">Question 1 of 13</div>
+
+    <!-- Step 0: Age -->
+    <section id="step-0" class="step active" data-step="0" aria-live="polite">
+      <label for="age">What is the driver’s age?</label>
+      <input id="age" type="number" inputmode="numeric" min="16" max="100" placeholder="e.g., 30" autocomplete="off"/>
+      <div class="hint">Must be between 16 and 100.</div>
+      <div id="err-0" class="error" aria-live="polite"></div>
+      <div class="controls"><button id="next-0">Next →</button></div>
+    </section>
+
+    <!-- Step 1: Number of vehicles -->
+    <section id="step-1" class="step" data-step="1" aria-live="polite">
+      <label for="vehicles">How many vehicles are on the policy?</label>
+      <input id="vehicles" type="number" inputmode="numeric" min="1" max="10" placeholder="e.g., 2" autocomplete="off"/>
+      <div class="hint">Enter a whole number (1–10).</div>
+      <div id="err-1" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-1">← Back</button>
+        <button id="next-1">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 2: Accidents -->
+    <section id="step-2" class="step" data-step="2" aria-live="polite">
+      <label for="accidents">How many at‑fault accidents in the last 3 years?</label>
+      <input id="accidents" type="number" inputmode="numeric" min="0" max="10" placeholder="e.g., 1" autocomplete="off"/>
+      <div class="hint">Enter a whole number (0–10).</div>
+      <div id="err-2" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-2">← Back</button>
+        <button id="next-2">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 3: Credit Score -->
+    <section id="step-3" class="step" data-step="3" aria-live="polite">
+      <label for="credit">What is the driver’s credit score?</label>
+      <input id="credit" type="number" inputmode="numeric" min="300" max="850" placeholder="e.g., 720" autocomplete="off"/>
+      <div class="hint">Range: 300–850 (FICO‑like scale).</div>
+      <div id="err-3" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-3">← Back</button>
+        <button id="next-3">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 4: Vehicle Type -->
+    <section id="step-4" class="step" data-step="4" aria-live="polite">
+      <label for="vehicleType">What type of vehicle(s)?</label>
+      <select id="vehicleType">
+        <option value="" selected disabled>Choose vehicle type</option>
+        <option value="sedan">Sedan / Coupe</option>
+        <option value="suv">SUV / Crossover</option>
+        <option value="truck">Pickup Truck</option>
+        <option value="minivan">Minivan</option>
+        <option value="sports">Sports / Performance</option>
+        <option value="luxury">Luxury</option>
+        <option value="ev">Electric (EV)</option>
+      </select>
+      <div class="hint">Used as a multiplier (sports/luxury typically higher risk/cost).</div>
+      <div id="err-4" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-4">← Back</button>
+        <button id="next-4">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 5: Coverage Type -->
+    <section id="step-5" class="step" data-step="5" aria-live="polite">
+      <label for="coverageType">What level of coverage?</label>
+      <select id="coverageType">
+        <option value="" selected disabled>Choose coverage level</option>
+        <option value="liability">Liability Only (State Minimum)</option>
+        <option value="standard">Standard Full Coverage</option>
+        <option value="enhanced">Enhanced Full Coverage (higher limits / lower deductibles)</option>
+      </select>
+      <div class="hint">Full coverage typically costs more than liability-only.</div>
+      <div id="err-5" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-5">← Back</button>
+        <button id="next-5">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 6: Annual Mileage -->
+    <section id="step-6" class="step" data-step="6" aria-live="polite">
+      <label for="mileage">About how many miles do you drive per year?</label>
+      <input id="mileage" type="number" inputmode="numeric" min="0" max="100000" placeholder="e.g., 12000" autocomplete="off"/>
+      <div class="hint">Typical range: 7,500–15,000 miles/year.</div>
+      <div id="err-6" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-6">← Back</button>
+        <button id="next-6">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 7: Gender (disabled rating by default) -->
+    <section id="step-7" class="step" data-step="7" aria-live="polite">
+      <label for="gender">Gender (for demo; may be restricted in your state)</label>
+      <select id="gender">
+        <option value="" selected disabled>Choose an option</option>
+        <option value="female">Female</option>
+        <option value="male">Male</option>
+        <option value="notsay">Prefer not to say</option>
+      </select>
+      <div class="hint">This demo treats all options equally unless you enable gender rating in the config.</div>
+      <div id="err-7" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-7">← Back</button>
+        <button id="next-7">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 8: Occupation -->
+    <section id="step-8" class="step" data-step="8" aria-live="polite">
+      <label for="occupation">Occupation</label>
+      <select id="occupation">
+        <option value="" selected disabled>Choose occupation</option>
+        <option value="professional">Professional / Managerial</option>
+        <option value="tech">Technology / Engineering</option>
+        <option value="healthcare">Healthcare</option>
+        <option value="education">Education</option>
+        <option value="military">Military</option>
+        <option value="service">Service / Trades</option>
+        <option value="student">Student</option>
+        <option value="retired">Retired</option>
+        <option value="government">Government</option>
+        <option value="unemployed">Unemployed</option>
+        <option value="other">Other</option>
+      </select>
+      <div class="hint">Mild factors for demo; adjust in the config as needed.</div>
+      <div id="err-8" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-8">← Back</button>
+        <button id="next-8">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 9: Location (State) -->
+    <section id="step-9" class="step" data-step="9" aria-live="polite">
+      <label for="state">Where is the vehicle primarily garaged? (State)</label>
+      <select id="state">
+        <option value="" selected disabled>Select state</option>
+        <option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option>
+        <option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option>
+        <option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District of Columbia</option>
+        <option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option>
+        <option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option>
+        <option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option>
+        <option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option>
+        <option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option>
+        <option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option>
+        <option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option>
+        <option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option>
+        <option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option>
+        <option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option>
+        <option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option>
+        <option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option>
+        <option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option>
+        <option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+      </select>
+      <div class="hint">Real rating uses territories/ZIPs; this demo uses broad state-level factors.</div>
+      <div id="err-9" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-9">← Back</button>
+        <button id="next-9">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 10: Early Shopper -->
+    <section id="step-10" class="step" data-step="10" aria-live="polite">
+      <label for="earlyShopper">Did you shop in advance (early shopper)?</label>
+      <select id="earlyShopper">
+        <option value="" selected disabled>Choose an option</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+      <div class="hint">Demo factor for quoting ahead of the effective date.</div>
+      <div id="err-10" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-10">← Back</button>
+        <button id="next-10">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 11: Bundle with Home or Renters -->
+    <section id="step-11" class="step" data-step="11" aria-live="polite">
+      <label for="bundleType">Bundle with another policy?</label>
+      <select id="bundleType">
+        <option value="" selected disabled>Choose one</option>
+        <option value="none">No bundle</option>
+        <option value="home">Bundle with Homeowners</option>
+        <option value="renters">Bundle with Renters</option>
+      </select>
+      <div class="hint">Single-select for demo (home or renters). Adjust factors in config.</div>
+      <div id="err-11" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-11">← Back</button>
+        <button id="next-11">Next →</button>
+      </div>
+    </section>
+
+    <!-- Step 12: Telematics / Signal -->
+    <section id="step-12" class="step" data-step="12" aria-live="polite">
+      <label for="signal">Enrolled in telematics / driving behavior program (Signal)?</label>
+      <select id="signal">
+        <option value="" selected disabled>Choose an option</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+      <div class="hint">Demo factor for usage-based insurance programs.</div>
+      <div id="err-12" class="error" aria-live="polite"></div>
+      <div class="controls">
+        <button class="secondary" id="back-12">← Back</button>
+        <button id="calc">Calculate</button>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="step" data-step="13" aria-live="polite">
+      <h2 style="margin-top:0">Estimated Premium</h2>
+      <div id="resultPills"></div>
+      <div class="results">
+        <div id="annual" class="price">$— / yr</div>
+        <div class="muted">≈ <span id="monthly">$—</span> / month</div>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div>
+          <strong>Breakdown</strong>
+          <ul id="breakdown" style="margin:.4rem 0 0 1rem; padding:0"></ul>
+        </div>
+        <div>
+          <strong>Assumptions</strong>
+          <ul style="margin:.4rem 0 0 1rem; padding:0">
+            <li>Base: $600 per vehicle / year</li>
+            <li>Accident surcharge: $200 each (cap 5)</li>
+            <li>Vehicle & coverage types apply to all vehicles</li>
+            <li>Multi‑vehicle discount applies at 2+ vehicles</li>
+            <li>Gender rating disabled by default (demo)</li>
+            <li>Combined discounts capped at a minimum factor (see config)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-note">This is a simplified estimator for demonstration and is <em>not</em> a quote.</div>
+      <div class="controls" style="margin-top:16px">
+        <button class="ghost" id="startOver">Start over</button>
+        <button class="secondary" id="editAnswers">Edit answers</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+
+    // --- Configuration: rating factors (adjust as needed) ---
+    const RATE_CONFIG = {
+      basePerVehicle: 600,             // USD/year per vehicle
+      accidentSurcharge: 200,          // USD per accident
+      accidentCap: 5,                  // max accidents counted
+
+      // Toggle gender-based rating (disabled for demo/compliance)
+      ENABLE_GENDER_RATING: false,
+
+      // --- Risk Factors ---
+      ageFactor: (age) => {
+        if (age < 25) return 1.50;
+        if (age <= 64) return 1.00;
+        return 1.20; // 65+
+      },
+
+      creditFactor: (score) => {
+        if (score >= 800) return 0.90;
+        if (score >= 740) return 1.00;
+        if (score >= 670) return 1.10;
+        if (score >= 580) return 1.25;
+        return 1.50; // <580
+      },
+
+      multiVehicleFactor: (vehicles) => {
+        if (vehicles >= 3) return 0.85;
+        if (vehicles === 2) return 0.90;
+        return 1.00;
+      },
+
+      vehicleTypeFactor: (typeKey) => ({
+        sedan: 1.00, suv: 1.10, truck: 1.15, minivan: 1.05, sports: 1.35, luxury: 1.25, ev: 1.10
+      }[typeKey] ?? 1.00),
+
+      coverageTypeFactor: (coverageKey) => ({
+        liability: 0.75, standard: 1.00, enhanced: 1.20
+      }[coverageKey] ?? 1.00),
+
+      mileageFactor: (miles) => {
+        if (miles <= 0) return 1.00;
+        if (miles < 7500) return 0.95;
+        if (miles <= 12000) return 1.00;
+        if (miles <= 15000) return 1.08;
+        if (miles <= 20000) return 1.15;
+        return 1.25; // very high mileage
+      },
+
+      genderFactor: (key) => {
+        if (!RATE_CONFIG.ENABLE_GENDER_RATING) return 1.00;
+        return ({ female: 0.98, male: 1.02, notsay: 1.00 }[key] ?? 1.00);
+      },
+
+      occupationFactor: (key) => ({
+        professional: 0.98,
+        tech: 0.97,
+        healthcare: 1.02,
+        education: 0.98,
+        military: 0.95,
+        service: 1.03,
+        student: 1.05,
+        retired: 0.97,
+        government: 0.99,
+        unemployed: 1.05,
+        other: 1.00
+      }[key] ?? 1.00),
+
+      stateFactor: (st) => ({
+        // Higher average costs
+        CA: 1.20, FL: 1.25, NY: 1.18, NJ: 1.15, LA: 1.22, MI: 1.20, CT: 1.12,
+        // Moderate
+        TX: 1.10, GA: 1.10, IL: 1.08, CO: 1.08, AZ: 1.05, WA: 1.05, MD: 1.10, MA: 1.12, PA: 1.07, VA: 1.03,
+        // Lower-than-average
+        OH: 0.95, ID: 0.95, IA: 0.94, ME: 0.93, VT: 0.94, WI: 0.96, WY: 0.95, ND: 0.95, SD: 0.95,
+      }[st] ?? 1.00),
+
+      // --- Discounts (all multiplicative factors ≤ 1.00) ---
+      discounts: {
+        // If yes → multiply by factor; if no → ×1.00
+        earlyShopperFactor: (yesNo) => (yesNo === 'yes' ? 0.95 : 1.00),     // 5% off
+        bundleFactor: (bundleType) => (
+          bundleType === 'home' ? 0.90 :        // 10% off
+          bundleType === 'renters' ? 0.93 :     // 7% off
+          1.00
+        ),
+        signalFactor: (yesNo) => (yesNo === 'yes' ? 0.90 : 1.00),           // 10% off
+
+        // Cap: combined discount factor cannot go below this (e.g., 0.65 = max 35% off)
+        MIN_COMBINED_DISCOUNT_FACTOR: 0.65
+      }
+    };
+
+    // --- State ---
+    const state = {
+      step: 0,
+      totalSteps: 13, // number of questions (results is step index 13)
+      answers: {
+        age: null, vehicles: null, accidents: null, credit: null,
+        vehicleType: null, coverageType: null,
+        mileage: null, gender: null, occupation: null, state: null,
+        earlyShopper: null, bundleType: null, signal: null
+      }
+    };
+
+    // --- Helpers ---
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+    const clampInt = (val, min, max) => {
+      const n = Number(val);
+      if (!Number.isFinite(n)) return null;
+      if (!Number.isInteger(n)) return null;
+      if (n < min || n > max) return null;
+      return n;
+    };
+
+    function showStep(i){
+      state.step = i;
+      $$('.step').forEach(s => s.classList.remove('active'));
+      const target = document.querySelector(`[data-step="${i}"]`);
+      if (target) target.classList.add('active');
+      const pct = Math.round((Math.min(i, state.totalSteps) / state.totalSteps) * 100);
+      $('#progressBar').style.width = pct + '%';
+      $('#stepCounter').textContent = i < state.totalSteps ? `Question ${i+1} of ${state.totalSteps}` : 'Results';
+      const input = target?.querySelector('input, select');
+      if (input) setTimeout(() => input.focus(), 50);
+    }
+
+    function validate(stepIdx){
+      let val = null, err = '';
+      switch (stepIdx){
+        case 0:
+          val = clampInt($('#age').value, 16, 100);
+          if (val === null) err = 'Please enter a whole number between 16 and 100.';
+          break;
+        case 1:
+          val = clampInt($('#vehicles').value, 1, 10);
+          if (val === null) err = 'Please enter a whole number between 1 and 10.';
+          break;
+        case 2:
+          val = clampInt($('#accidents').value, 0, 10);
+          if (val === null) err = 'Please enter a whole number between 0 and 10.';
+          break;
+        case 3:
+          val = clampInt($('#credit').value, 300, 850);
+          if (val === null) err = 'Please enter a whole number between 300 and 850.';
+          break;
+        case 4:
+          val = $('#vehicleType').value || null;
+          if (!val) err = 'Please choose a vehicle type.';
+          break;
+        case 5:
+          val = $('#coverageType').value || null;
+          if (!val) err = 'Please choose a coverage level.';
+          break;
+        case 6:
+          val = clampInt($('#mileage').value, 0, 100000);
+          if (val === null) err = 'Please enter a whole number between 0 and 100,000.';
+          break;
+        case 7:
+          val = $('#gender').value || null;
+          if (!val) err = 'Please choose an option.';
+          break;
+        case 8:
+          val = $('#occupation').value || null;
+          if (!val) err = 'Please choose an occupation.';
+          break;
+        case 9:
+          val = $('#state').value || null;
+          if (!val) err = 'Please choose a state.';
+          break;
+        case 10:
+          val = $('#earlyShopper').value || null;
+          if (!val) err = 'Please choose an option.';
+          break;
+        case 11:
+          val = $('#bundleType').value || null;
+          if (!val) err = 'Please choose one.';
+          break;
+        case 12:
+          val = $('#signal').value || null;
+          if (!val) err = 'Please choose an option.';
+          break;
+      }
+      const errEl = document.getElementById(`err-${stepIdx}`);
+      if (errEl) errEl.textContent = err;
+      if (err) return null;
+      return val;
+    }
+
+    function labelForVehicleType(key){
+      return {
+        sedan: 'Sedan / Coupe',
+        suv: 'SUV / Crossover',
+        truck: 'Pickup Truck',
+        minivan: 'Minivan',
+        sports: 'Sports / Performance',
+        luxury: 'Luxury',
+        ev: 'Electric (EV)'
+      }[key] || key;
+    }
+    function labelForCoverageType(key){
+      return {
+        liability: 'Liability Only (State Minimum)',
+        standard: 'Standard Full Coverage',
+        enhanced: 'Enhanced Full Coverage'
+      }[key] || key;
+    }
+    function labelForGender(key){
+      return { female:'Female', male:'Male', notsay:'Prefer not to say' }[key] || key;
+    }
+    function labelForOccupation(key){
+      return {
+        professional:'Professional / Managerial', tech:'Technology / Engineering', healthcare:'Healthcare',
+        education:'Education', military:'Military', service:'Service / Trades', student:'Student',
+        retired:'Retired', government:'Government', unemployed:'Unemployed', other:'Other'
+      }[key] || key;
+    }
+    function labelForBundle(key){
+      return { none:'No bundle', home:'Bundle with Homeowners', renters:'Bundle with Renters' }[key] || key;
+    }
+
+    function calculatePremium(a){
+      // Risk factors product
+      const base = RATE_CONFIG.basePerVehicle * a.vehicles;
+      const ageF = RATE_CONFIG.ageFactor(a.age);
+      const creditF = RATE_CONFIG.creditFactor(a.credit);
+      const mvF = RATE_CONFIG.multiVehicleFactor(a.vehicles);
+      const vtF = RATE_CONFIG.vehicleTypeFactor(a.vehicleType);
+      const covF = RATE_CONFIG.coverageTypeFactor(a.coverageType);
+      const milesF = RATE_CONFIG.mileageFactor(a.mileage);
+      const genderF = RATE_CONFIG.genderFactor(a.gender);
+      const occF = RATE_CONFIG.occupationFactor(a.occupation);
+      const stateF = RATE_CONFIG.stateFactor(a.state);
+
+      const riskProduct = ageF * creditF * mvF * vtF * covF * milesF * genderF * occF * stateF;
+
+      // Discount factors product (capped)
+      const d = RATE_CONFIG.discounts;
+      const earlyF = d.earlyShopperFactor(a.earlyShopper);
+      const bundleF = d.bundleFactor(a.bundleType);
+      const signalF = d.signalFactor(a.signal);
+      const discountsProduct = earlyF * bundleF * signalF;
+
+      const minDisc = d.MIN_COMBINED_DISCOUNT_FACTOR;
+      const effectiveDiscount = Math.max(discountsProduct, minDisc);
+      const discountCapped = discountsProduct < minDisc;
+
+      // Accidents
+      const countedAccidents = Math.min(a.accidents, RATE_CONFIG.accidentCap);
+      const accidentCharge = countedAccidents * RATE_CONFIG.accidentSurcharge;
+
+      // Premium
+      const factored = base * riskProduct * effectiveDiscount;
+      const annual = Math.round(factored + accidentCharge);
+      const monthly = Math.round(annual / 12);
+
+      return {
+        annual, monthly,
+        parts: {
+          base, ageF, creditF, mvF, vtF, covF, milesF, genderF, occF, stateF,
+          earlyF, bundleF, signalF, discountsProduct, effectiveDiscount, discountCapped, minDisc,
+          accidentCharge, countedAccidents
+        }
+      };
+    }
+
+    function renderResults(){
+      const a = state.answers;
+      const res = calculatePremium(a);
+      $('#annual').textContent = `${fmt(res.annual)} / yr`;
+      $('#monthly').textContent = fmt(res.monthly);
+
+      // Pills (answers summary)
+      const pills = [
+        `Age: ${a.age}`,
+        `Vehicles: ${a.vehicles}`,
+        `Accidents (3y): ${a.accidents}`,
+        `Credit: ${a.credit}`,
+        `Vehicle: ${labelForVehicleType(a.vehicleType)}`,
+        `Coverage: ${labelForCoverageType(a.coverageType)}`,
+        `Miles/yr: ${a.mileage.toLocaleString()}`,
+        `Gender: ${labelForGender(a.gender)}`,
+        `Occupation: ${labelForOccupation(a.occupation)}`,
+        `State: ${a.state}`,
+        `Early shopper: ${a.earlyShopper === 'yes' ? 'Yes' : 'No'}`,
+        `Bundle: ${labelForBundle(a.bundleType)}`,
+        `Telematics: ${a.signal === 'yes' ? 'Yes' : 'No'}`
+      ];
+      $('#resultPills').innerHTML = pills.map(p => `<span class="pill">${p}</span>`).join('');
+
+      // Breakdown
+      const b = res.parts;
+      const items = [
+        `<strong>Base:</strong> ${fmt(RATE_CONFIG.basePerVehicle)} × ${a.vehicles} vehicle(s) = ${fmt(b.base)}`,
+        `Age factor: ×${b.ageF.toFixed(2)}`,
+        `Credit factor: ×${b.creditF.toFixed(2)}`,
+        `Multi‑vehicle factor: ×${b.mvF.toFixed(2)}`,
+        `Vehicle type factor: ×${b.vtF.toFixed(2)}`,
+        `Coverage type factor: ×${b.covF.toFixed(2)}`,
+        `Annual mileage factor: ×${b.milesF.toFixed(2)}`,
+        `Gender factor: ×${b.genderF.toFixed(2)} ${!RATE_CONFIG.ENABLE_GENDER_RATING ? '(disabled)' : ''}`,
+        `Occupation factor: ×${b.occF.toFixed(2)}`,
+        `State factor: ×${b.stateF.toFixed(2)}`,
+        `<hr style="border:none;border-top:1px dashed rgba(255,255,255,.2);margin:8px 0">`,
+        `<strong>Discounts:</strong>`,
+        `Early shopper: ×${b.earlyF.toFixed(2)}`,
+        `Bundle: ×${b.bundleF.toFixed(2)}`,
+        `Telematics/Signal: ×${b.signalF.toFixed(2)}`,
+        `Combined discounts: ×${b.discountsProduct.toFixed(2)}${b.discountCapped ? ` (capped at ×${b.minDisc.toFixed(2)})` : ''}`,
+        `<hr style="border:none;border-top:1px dashed rgba(255,255,255,.2);margin:8px 0">`,
+        `Accident surcharge: ${b.countedAccidents} × ${fmt(RATE_CONFIG.accidentSurcharge)} = ${fmt(b.accidentCharge)}`
+      ];
+      $('#breakdown').innerHTML = items.map(x => `<li>${x}</li>`).join('');
+    }
+
+    function wireEvents(){
+      // Next buttons
+      $('#next-0').addEventListener('click', () => { const v = validate(0); if (v===null) return; state.answers.age = v; showStep(1); });
+      $('#next-1').addEventListener('click', () => { const v = validate(1); if (v===null) return; state.answers.vehicles = v; showStep(2); });
+      $('#next-2').addEventListener('click', () => { const v = validate(2); if (v===null) return; state.answers.accidents = v; showStep(3); });
+      $('#next-3').addEventListener('click', () => { const v = validate(3); if (v===null) return; state.answers.credit = v; showStep(4); });
+      $('#next-4').addEventListener('click', () => { const v = validate(4); if (v===null) return; state.answers.vehicleType = v; showStep(5); });
+      $('#next-5').addEventListener('click', () => { const v = validate(5); if (v===null) return; state.answers.coverageType = v; showStep(6); });
+      $('#next-6').addEventListener('click', () => { const v = validate(6); if (v===null) return; state.answers.mileage = v; showStep(7); });
+      $('#next-7').addEventListener('click', () => { const v = validate(7); if (v===null) return; state.answers.gender = v; showStep(8); });
+      $('#next-8').addEventListener('click', () => { const v = validate(8); if (v===null) return; state.answers.occupation = v; showStep(9); });
+      $('#next-9').addEventListener('click', () => { const v = validate(9); if (v===null) return; state.answers.state = v; showStep(10); });
+      $('#next-10').addEventListener('click', () => { const v = validate(10); if (v===null) return; state.answers.earlyShopper = v; showStep(11); });
+      $('#next-11').addEventListener('click', () => { const v = validate(11); if (v===null) return; state.answers.bundleType = v; showStep(12); });
+      $('#calc').addEventListener('click', () => {
+        const v = validate(12); if (v===null) return;
+        state.answers.signal = v; showStep(13); renderResults();
+      });
+
+      // Back buttons
+      $('#back-1').addEventListener('click', () => showStep(0));
+      $('#back-2').addEventListener('click', () => showStep(1));
+      $('#back-3').addEventListener('click', () => showStep(2));
+      $('#back-4').addEventListener('click', () => showStep(3));
+      $('#back-5').addEventListener('click', () => showStep(4));
+      $('#back-6').addEventListener('click', () => showStep(5));
+      $('#back-7').addEventListener('click', () => showStep(6));
+      $('#back-8').addEventListener('click', () => showStep(7));
+      $('#back-9').addEventListener('click', () => showStep(8));
+      $('#back-10').addEventListener('click', () => showStep(9));
+      $('#back-11').addEventListener('click', () => showStep(10));
+      $('#back-12').addEventListener('click', () => showStep(11));
+
+      // Start over
+      $('#startOver').addEventListener('click', () => {
+        state.answers = {
+          age:null, vehicles:null, accidents:null, credit:null,
+          vehicleType:null, coverageType:null,
+          mileage:null, gender:null, occupation:null, state:null,
+          earlyShopper:null, bundleType:null, signal:null
+        };
+        ['#age','#vehicles','#accidents','#credit','#mileage'].forEach(sel => $(sel).value = '');
+        ['#vehicleType','#coverageType','#gender','#occupation','#state','#earlyShopper','#bundleType','#signal']
+          .forEach(sel => { $(sel).selectedIndex = 0; });
+        $$('.error').forEach(e => e.textContent = '');
+        showStep(0);
+      });
+
+      // Edit answers (go back to first question retaining values)
+      $('#editAnswers').addEventListener('click', () => { showStep(0); });
+
+      // Enter key to advance (inputs + selects)
+      [
+        ['#age',0],['#vehicles',1],['#accidents',2],['#credit',3],
+        ['#vehicleType',4],['#coverageType',5],['#mileage',6],
+        ['#gender',7],['#occupation',8],['#state',9],
+        ['#earlyShopper',10],['#bundleType',11],['#signal',12]
+      ].forEach(([sel, idx]) => {
+        $(sel).addEventListener('keydown', (e) => {
+          if (e.key === 'Enter'){
+            e.preventDefault();
+            if (idx <= 11) document.getElementById(`next-${idx}`).click();
+            else document.getElementById('calc').click();
+          }
+        });
+      });
+    }
+
+    // Init
+    wireEvents();
+    showStep(0);
+
+  
+  </script>
+</body>
+</html>
